@@ -1137,7 +1137,7 @@ fn get_api_server_(api: String, custom: String) -> String {
             return format!("http://{}", s);
         }
     }
-    "http://portable.liangdengyu.com:21114".to_owned()
+    "http://portable.liangdengyu.com:12345".to_owned()
 }
 
 #[inline]
