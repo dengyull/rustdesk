@@ -3579,7 +3579,12 @@ pub async fn handle_hash(
     }
 
     if password.is_empty() {
-        let p = crate::ui_interface::get_builtin_option(keys::OPTION_DEFAULT_CONNECT_PASSWORD);
+        let mut p = crate::ui_interface::get_local_option(
+            keys::OPTION_DEFAULT_CONNECT_PASSWORD.to_owned(),
+        );
+        if p.is_empty() {
+            p = crate::ui_interface::get_builtin_option(keys::OPTION_DEFAULT_CONNECT_PASSWORD);
+        }
         if !p.is_empty() {
             let mut hasher = Sha256::new();
             hasher.update(p.clone());

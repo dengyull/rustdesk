@@ -1288,8 +1288,137 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
             // if (usePassword)
             //   hide_cm(!locked).marginOnly(left: _kContentHSubMargin - 6),
             if (usePassword) radios[2],
+            defaultConnectPassword(context),
           ]);
         })));
+  }
+
+  Widget defaultConnectPassword(BuildContext context) {
+    final isSet = bind
+            .mainGetLocalOption(key: kOptionDefaultConnectPassword)
+            .isNotEmpty ||
+        bind
+            .mainGetBuildinOption(key: kOptionDefaultConnectPassword)
+            .isNotEmpty;
+    final enabled = !locked;
+    return _SubLabeledWidget(
+      context,
+      'Default connection password',
+      Row(
+        children: [
+          if (isSet)
+            const Icon(Icons.check_circle_outline,
+                    color: Color(0xFF0A9471), size: 18)
+                .marginOnly(right: 8),
+          ElevatedButton(
+            onPressed: enabled ? showDefaultConnectPasswordDialog : null,
+            child:
+                Text(isSet ? translate('Change') : translate('Set Password')),
+          ),
+        ],
+      ),
+      enabled: enabled,
+    );
+  }
+
+  void showDefaultConnectPasswordDialog() {
+    final passwordController = TextEditingController();
+    final confirmationController = TextEditingController();
+    var error = '';
+    var canSubmit = false;
+    final localPasswordSet =
+        bind.mainGetLocalOption(key: kOptionDefaultConnectPassword).isNotEmpty;
+    final title =
+        '${translate('Default')} ${translate('Connection')} ${translate('Password')}';
+
+    gFFI.dialogManager.show((setState, close, context) {
+      submit() async {
+        final password = passwordController.text.trim();
+        if (password.isEmpty) return;
+        if (confirmationController.text.trim() != password) {
+          setState(() {
+            error = translate('The confirmation is not identical.');
+          });
+          return;
+        }
+        await bind.mainSetLocalOption(
+            key: kOptionDefaultConnectPassword, value: password);
+        close();
+        this.setState(() {});
+      }
+
+      return CustomAlertDialog(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.key, color: MyTheme.accent),
+            Text(title).paddingOnly(left: 10),
+          ],
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                autofocus: true,
+                maxLength: bind.mainMaxEncryptLen(),
+                decoration: InputDecoration(
+                  labelText: translate('Password'),
+                  errorText: error.isEmpty ? null : error,
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    error = '';
+                    canSubmit = value.trim().isNotEmpty;
+                  });
+                },
+                onSubmitted: (_) {
+                  if (canSubmit) submit();
+                },
+              ).workaroundFreezeLinuxMint(),
+              TextField(
+                controller: confirmationController,
+                obscureText: true,
+                maxLength: bind.mainMaxEncryptLen(),
+                decoration:
+                    InputDecoration(labelText: translate('Confirmation')),
+                onChanged: (_) {
+                  if (error.isNotEmpty) setState(() => error = '');
+                },
+                onSubmitted: (_) {
+                  if (canSubmit) submit();
+                },
+              ).workaroundFreezeLinuxMint(),
+            ],
+          ),
+        ),
+        actions: [
+          dialogButton('Cancel',
+              icon: const Icon(Icons.close_rounded),
+              onPressed: close,
+              isOutline: true),
+          if (localPasswordSet)
+            dialogButton(
+              'Remove',
+              icon: const Icon(Icons.delete_outline_rounded),
+              onPressed: () async {
+                await bind.mainSetLocalOption(
+                    key: kOptionDefaultConnectPassword, value: '');
+                close();
+                this.setState(() {});
+              },
+              buttonStyle: const ButtonStyle(
+                  backgroundColor: WidgetStatePropertyAll(Colors.red)),
+            ),
+          dialogButton('OK',
+              icon: const Icon(Icons.done_rounded),
+              onPressed: canSubmit ? submit : null),
+        ],
+      );
+    });
   }
 
   Widget more(BuildContext context) {

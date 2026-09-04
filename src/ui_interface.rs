@@ -224,7 +224,18 @@ pub fn is_option_fixed(key: &str) -> bool {
 
 #[inline]
 pub fn get_local_option(key: String) -> String {
-    crate::get_local_option(&key)
+    let value = crate::get_local_option(&key);
+    if key != config::keys::OPTION_DEFAULT_CONNECT_PASSWORD || value.is_empty() {
+        return value;
+    }
+    let (plain, decrypted, should_store) =
+        hbb_common::password_security::decrypt_str_or_original(&value, "00");
+    if decrypted || should_store {
+        plain
+    } else {
+        log::error!("Failed to decrypt the default connection password");
+        String::new()
+    }
 }
 
 #[inline]
@@ -245,7 +256,20 @@ pub fn get_builtin_option(key: &str) -> String {
 
 #[inline]
 pub fn set_local_option(key: String, value: String) {
-    LocalConfig::set_option(key.clone(), value);
+    if key == config::keys::OPTION_DEFAULT_CONNECT_PASSWORD {
+        if value.chars().count() > config::ENCRYPT_MAX_LEN {
+            log::error!("The default connection password is too long");
+            return;
+        }
+        let value = hbb_common::password_security::encrypt_str_or_original(
+            &value,
+            "00",
+            config::ENCRYPT_MAX_LEN,
+        );
+        LocalConfig::set_option(key, value);
+    } else {
+        LocalConfig::set_option(key, value);
+    }
 }
 
 /// Resolve relative avatar path (e.g. "/avatar/xxx") to absolute URL
